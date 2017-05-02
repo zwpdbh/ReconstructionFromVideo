@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/OpencvDemo/OpencvDemo.iml" filepath="$PROJECT_DIR$/OpencvDemo/OpencvDemo.iml" />
+      <module fileurl="file://$PROJECT_DIR$/ReconstructionFromVideo.iml" filepath="$PROJECT_DIR$/ReconstructionFromVideo.iml" />
+    </modules>
+  </component>
+</project>
