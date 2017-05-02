@@ -2,8 +2,12 @@ package reconstruction;
 
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import org.opencv.core.*;
+import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
+import org.opencv.video.Video;
 import org.opencv.videoio.VideoCapture;
 import utils.Utils;
 import javafx.scene.image.Image;
@@ -31,6 +35,9 @@ public class Controller {
 
     private static int cameraID = 0;
 
+    private Mat previousFrame = new Mat();
+    private Mat opticalFlowFrame;
+
     @FXML
     protected void startCamera(ActionEvent event) {
         if (!this.cameraActive) {
@@ -39,10 +46,32 @@ public class Controller {
             if (this.capture.isOpened()) {
                 this.cameraActive = true;
 
+
+
                 Runnable frameGrabber = new Runnable() {
                     @Override
                     public void run() {
                         Mat frame = grabFrame();
+
+                        if (!previousFrame.empty()) {
+                            Size frameSize = previousFrame.size();
+                            opticalFlowFrame = new Mat(frameSize, CvType.CV_32FC2);
+
+                            // calculate optical flow
+                            Video.calcOpticalFlowFarneback(previousFrame, frame, opticalFlowFrame, 0.5,
+                                    3, 12, 2, 8, 1.2, 0);
+
+                            if (!opticalFlowFrame.empty()) {
+                                // process optical flow to visualize it
+
+                                Mat mag = new Mat();
+                                Mat angel = new Mat();
+
+//                                Core.cartToPolar(opticalFlowFrame.);
+                            }
+                        }
+
+                        frame.copyTo(previousFrame);
 
                         Image imageToShow = Utils.mat2Image(frame);
                         updateImageView(currentFrame, imageToShow);
