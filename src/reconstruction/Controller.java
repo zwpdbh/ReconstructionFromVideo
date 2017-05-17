@@ -62,12 +62,8 @@ public class Controller {
                                     3, 12, 2, 8, 1.2, 0);
 
                             if (!opticalFlowFrame.empty()) {
-                                // process optical flow to visualize it
-
-                                Mat mag = new Mat();
-                                Mat angel = new Mat();
-
-//                                Core.cartToPolar(opticalFlowFrame.);
+                                // use grab cut
+//                                Imgproc.grabCut();
                             }
                         }
 
