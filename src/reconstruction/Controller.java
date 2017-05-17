@@ -3,9 +3,6 @@ package reconstruction;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import org.opencv.core.*;
-import org.opencv.core.CvType;
-import org.opencv.core.Mat;
-import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.video.Video;
 import org.opencv.videoio.VideoCapture;
@@ -36,38 +33,52 @@ public class Controller {
     private static int cameraID = 0;
 
     private Mat previousFrame = new Mat();
-    private Mat opticalFlowFrame;
+    private Mat opticalFlowMat;
+    private Mat frame;
+    private Mat originalFrame;
+    private Mat mask;
+    private Mat bg = new Mat(1, 65, CvType.CV_64FC1);
+    private Mat fg = new Mat(1, 65, CvType.CV_64FC1);
 
     @FXML
     protected void startCamera(ActionEvent event) {
         if (!this.cameraActive) {
-            this.capture.open(cameraID);
+//            this.capture.open(cameraID);
+            this.capture.open("/Users/zw/code/Java_Projects/ReconstructionFromVideo/data/vtest.mp4");
 
             if (this.capture.isOpened()) {
                 this.cameraActive = true;
-
 
 
                 Runnable frameGrabber = new Runnable() {
                     @Override
                     public void run() {
                         Mat frame = grabFrame();
+                        Mat grayedImage = new Mat(frame.size(), CvType.CV_8UC1);
+                        // if the frame is not empty, process it
+                        if (!frame.empty()) {
+                            Imgproc.cvtColor(frame, grayedImage, Imgproc.COLOR_BGR2GRAY);
+                        }
 
                         if (!previousFrame.empty()) {
                             Size frameSize = previousFrame.size();
-                            opticalFlowFrame = new Mat(frameSize, CvType.CV_32FC2);
+                            opticalFlowMat = new Mat(frameSize, CvType.CV_32FC2);
 
                             // calculate optical flow
-                            Video.calcOpticalFlowFarneback(previousFrame, frame, opticalFlowFrame, 0.5,
+                            Video.calcOpticalFlowFarneback(previousFrame, grayedImage, opticalFlowMat, 0.5,
                                     3, 12, 2, 8, 1.2, 0);
 
-                            if (!opticalFlowFrame.empty()) {
+                            if (!opticalFlowMat.empty()) {
                                 // use grab cut
-//                                Imgproc.grabCut();
+                                mask = initializeMaskWithOpticalFlow(opticalFlowMat);
+
+                                Rect rect = new Rect(0, 0, frame.width(), frame.height());
+                                Imgproc.grabCut(frame, mask, rect, bg, fg, 1, Imgproc.GC_INIT_WITH_MASK);
+//                                frame = updateMatWithMask(mask, frame);
                             }
                         }
 
-                        frame.copyTo(previousFrame);
+                        grayedImage.copyTo(previousFrame);
 
                         Image imageToShow = Utils.mat2Image(frame);
                         updateImageView(currentFrame, imageToShow);
@@ -96,11 +107,6 @@ public class Controller {
             try {
                 // read the current frame
                 this.capture.read(frame);
-
-                // if the frame is not empty, process it
-                if (!frame.empty()) {
-                    Imgproc.cvtColor(frame, frame, Imgproc.COLOR_BGR2GRAY);
-                }
 
             } catch (Exception e) {
                 // log the error
@@ -138,5 +144,40 @@ public class Controller {
         this.stopAcquisition();
     }
 
+
+    private Mat initializeMaskWithOpticalFlow(Mat opticalFlowMat) {
+        Mat mask = new Mat(opticalFlowMat.size(), CvType.CV_8U);
+        for (int i = 0; i < opticalFlowMat.rows(); i++) {
+            for (int j = 0; j < opticalFlowMat.cols(); j++) {
+                double u = opticalFlowMat.get(i, j)[0];
+                double v = opticalFlowMat.get(i, j)[1];
+                double dis = Math.sqrt(Math.pow(u, 2) + Math.pow(v, 2));
+                if (dis >= 3) {
+                    mask.put(i, j, 1);
+                } else if (dis > 0 && dis < 2) {
+                    mask.put(i, j, 3);
+                } else if (dis == 0) {
+                    mask.put(i, j, 0);
+                } else {
+                    mask.put(i, j, 2);
+                }
+
+            }
+        }
+        return mask;
+    }
+
+    private Mat updateMatWithMask(Mat mask, Mat image) {
+        for (int i = 0; i < mask.cols(); i++) {
+            for (int j = 0; j < mask.rows(); j++) {
+                if (mask.get(i, j)[0] == 0 || mask.get(i, j)[0] == 2) {
+                    double[] color = {0, 0, 0};
+                    image.put(i, j, color);
+                }
+            }
+        }
+
+        return image;
+    }
 }
 
